@@ -29,7 +29,7 @@ R language was R version 3.1.1 (2014-07-10)
 
 For publishing to `rpubs.com`, I used RStudio version 0.98.1103
 
-The full project may be found on Github at `https://github.com/gregoryg/05-reproducible-research-assignment-2`
+The full project may be found on Github at `https://github.com/sukubagchi/05-reproducible-research-assignment-2`
 
 ## Data Processing
 ### Set libraries used in this analysis
