@@ -50,23 +50,16 @@ library(gridExtra)
 ```{r loadData}
 dseturl <- "https://d396qusza40orc.cloudfront.net/repdata%2Fdata%2FStormData.csv.bz2"
 dsetzip <- "data/StormData.csv.bz2"
-dsetrds <- "data/StormData.RDS"
 
 if (!file.exists(dsetzip)) {
     download.file(url = dseturl,
-                  destfile = dsetzip,
-                  method = "curl")
+                  destfile = dsetzip)
 }
 
 ## For faster processing, check for R Data Set save file
 ## To force data cleaning, delete .RDS file before running/knitting/weaving
-RDSloaded <- FALSE
-if (!file.exists(dsetrds)) {
-    d <- read.csv(file = bzfile(dsetzip), strip.white = TRUE)
-} else {
-    d <- readRDS(dsetrds)
-    RDSloaded <- TRUE
-}
+d <- read.csv(file = bzfile(dsetzip), strip.white = TRUE)
+
 
 ```
 
@@ -88,18 +81,18 @@ for exponent:
   * B billion (x1,000,000,000)
 
 ```{r addUSDcol}
-if(!RDSloaded) {
+
     calcUSD <- function(dmg, dmgexp) dmg * switch(toupper(dmgexp), H=100, K=1000, M=1000000, B=1000000000, 1)
 
     d$pdmgUSD <- mapply(calcUSD, d$PROPDMG, d$PROPDMGEXP)
     d$cdmgUSD <- mapply(calcUSD, d$CROPDMG, d$CROPDMGEXP)
-}
+
 ```
 
 To assist in date analysis, we will convert dates to POSIXct format
 
 ```{r addPOSIXdate}
-if(!RDSloaded)
+
     d$BEGIN_UTC <- mdy(str_extract(d$BGN_DATE, "[^ ]+"))
 ```
 
@@ -113,7 +106,7 @@ for common words and abbreviations in a relative handful of weather
 categories.
 
 ```{r addWeatherCategory} 
-if (!RDSloaded) {
+
     generateEvent <- function(evt) {
         evt <- tolower(evt)
         ifelse(grepl("lightning", evt), "lightning",
@@ -130,7 +123,7 @@ if (!RDSloaded) {
                                                                               ))))))))))
     }
     d$weatherCategory <- mapply(generateEvent, d$EVTYPE)
-}
+
 ```
 
 
@@ -139,7 +132,7 @@ continental US, plus District of Columbia, Hawaii and
 Alaska. territories, protectorates, and military regions are excluded
 
 ```{r addUSAcol} 
-if (!RDSloaded)
+
     d$isUSA <- mapply( function(st) st %in% state.abb, d$STATE )
 ```
 
@@ -148,11 +141,7 @@ data set (`.RDS` file).  After reading, immediately subset the data to
 only those records originating in the US.
 
 ```{r saveRDS}
-if (!RDSloaded) {
-    saveRDS(d, file=dsetrds)
-    d <- readRDS(dsetrds)
-    RDSloaded <- TRUE
-}
+
 ## subset to only USA data
 d <- d[d$isUSA == TRUE,]
 ```
@@ -172,7 +161,8 @@ hdat <- melt(harm, id.vars=c("weatherCategory", "sumrecs"), measure.vars=c("deat
 hdat <- sqldf("select *,(value/sumrecs)*100 as pctPerEvent from hdat")
 plot1 <- ggplot(hdat, aes(x=weatherCategory, y=value, fill=variable)) + geom_bar(stat="identity") + coord_flip() + ggtitle("Total Casualties per Weather Type") + xlab("Weather type") + ylab("# Casualties")
 plot2 <- ggplot(hdat, aes(x=weatherCategory, y=pctPerEvent, fill=variable)) + geom_bar(stat="identity") + coord_flip() + ggtitle("Average Casualties per Incident") + xlab("Weather type") + ylab("% Casualties Reported")
-grid.arrange(plot1, plot2, ncol=1, sub="Figure 1")
+grid.arrange(plot1)
+grid.arrange(plot2)
 ```
 
 Wind events -- including tornadoes and hurricanes -- have the highest
@@ -189,7 +179,7 @@ crop <- sqldf("select *, propertyDmgUSD + cropDmgUSD as totalCost from crop")
 cdat <- melt(crop, id.vars=c("weatherCategory", "sumrecs", "totalCost"), measure.vars=c("propertyDmgUSD", "cropDmgUSD"))
 cdat <- sqldf("select *, (value/sumrecs) as costPerEvent from cdat")
 plot3 <- ggplot(cdat, aes(x=weatherCategory, y=value/1000000000, fill=variable)) + geom_bar(stat="identity") + coord_flip() + ggtitle("Damages per Weather Type") + xlab("Weather type") + ylab("Damages in Billions USD")
-grid.arrange(plot3, ncol=1, sub="Figure 2")
+grid.arrange(plot3)
 
 ```
 
